@@ -1,1 +1,8 @@
+# The virtual environment
 env
+
+# Test files
+/test*.py
+
+# Cache files
+**/__pycache__
