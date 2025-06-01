@@ -1,0 +1,15 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[project]
+name = "golftrack"
+authors = [{name = "Adam Lynch", email = "adamclynch03@gmail.com"}]
+description = "Tool for analyzing NFL data"
+readme = "README.md"
+version = "0.1.0"
+dependencies = [
+    "pandas",
+    "openpyxl",
+]
