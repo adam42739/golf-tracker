@@ -2,7 +2,23 @@ import pandas as pd
 from pygolf import stats
 
 
-class _CourseData:
+# The columns for the "Courses" sheet in the Excel file
+_COURSES_COLUMNS = {
+    "Course Code": pd.StringDtype(),
+    "Course Name": pd.StringDtype(),
+}
+
+
+# The columns for each course description sheet in the Excel file
+_COURSE_DESC_COLUMNS = {
+    "Hole": pd.Int64Dtype(),
+    "Yardage": pd.Int64Dtype(),
+    "Par": pd.Int64Dtype(),
+    "Handicap": pd.Int64Dtype(),
+}
+
+
+class _Courses:
     """
     Class to load and manage course data from an Excel file.
     """
@@ -10,49 +26,57 @@ class _CourseData:
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-        # Get the course codes and names
-        courses = pd.read_excel(
-            self.file_path,
-            "Courses",
-            dtype={
-                "Course Code": pd.StringDtype(),
-                "Course Name": pd.StringDtype(),
-            },
-        )
+        self._load_courses()
+        self._load_desc_all()
 
-        # Concatenate all course information into a single DataFrame
-        self._courses = pd.concat(
-            [self._get_course(row["Course Code"]) for _, row in courses.iterrows()],
+    def _load_courses(self):
+        """
+        Load the "Courses" sheet from the Excel file.
+        """
+        self.courses = pd.read_excel(self.file_path, "Courses", dtype=_COURSES_COLUMNS)
+
+    def _load_desc_all(self):
+        """
+        Load all the course description sheets from the Excel file.
+        """
+        self.descs = pd.concat(
+            [
+                self._load_desc_single(course_code)
+                for course_code in self.courses["Course Code"]
+            ],
             ignore_index=True,
-        )
-        self._courses = self._courses.set_index(["Course Code", "Hole"])
+        ).set_index(["Course Code", "Hole"])
 
-    def _get_course(self, course_code: str) -> pd.DataFrame:
+    def _load_desc_single(self, course_code: str) -> pd.DataFrame:
         """
-        Load a course's data from the Excel file.
+        Load a course's description data from the Excel file.
         """
-        course = pd.read_excel(
-            self.file_path,
-            course_code,
-            dtype={
-                "Hole": pd.Int64Dtype(),
-                "Yardage": pd.Int64Dtype(),
-                "Par": pd.Int64Dtype(),
-                "Handicap": pd.Int64Dtype(),
-            },
-        )
+        course = pd.read_excel(self.file_path, course_code, dtype=_COURSE_DESC_COLUMNS)
         course["Course Code"] = course_code
 
         return course
 
-    def get(self) -> pd.DataFrame:
-        """
-        Returns the course data as a DataFrame.
-        """
-        return self._courses
+
+# The columns for the "Rounds" sheet in the Excel file
+_ROUNDS_COLUMNS = {
+    "Round Code": pd.StringDtype(),
+    "Course Code": pd.StringDtype(),
+    "Date": pd.StringDtype(),
+}
 
 
-class _ScorecardData:
+# The columns for each round scorecard sheet in the Excel file
+_SCORECARD_COLUMNS = {
+    "Hole": pd.Int64Dtype(),
+    "Score": pd.Int64Dtype(),
+    "TFH": pd.StringDtype(),  # Tee Fairway Hit (Yes/No in the Excel file but converted to BooleanDtype later)
+    "NTFH": pd.Int64Dtype(),  # Non-Tee Fairway Hits
+    "Chips": pd.Int64Dtype(),
+    "Putts": pd.Int64Dtype(),
+}
+
+
+class _Rounds:
     """
     Class to load and manage round scorecard data from an Excel file.
     """
@@ -60,51 +84,38 @@ class _ScorecardData:
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-        # Get the round information
-        rounds = pd.read_excel(
-            self.file_path,
-            "Rounds",
-            dtype={
-                "Round Code": pd.StringDtype(),
-                "Course Code": pd.StringDtype(),
-                "Date": pd.StringDtype(),
-            },
-            parse_dates=["Date"],
+        self._load_rounds()
+        self._load_scorecard_all()
+
+    def _load_rounds(self):
+        """
+        Load the "Rounds" sheet from the Excel file.
+        """
+        self.rounds = pd.read_excel(
+            self.file_path, "Rounds", dtype=_ROUNDS_COLUMNS, parse_dates=["Date"]
         )
 
-        # Concatenate all scorecards into a single DataFrame
-        self._scorecards = pd.concat(
+    def _load_scorecard_all(self):
+        """
+        Load all the scorecard sheets from the Excel file.
+        """
+        self.scorecards = pd.concat(
             [
-                self._get_scorecard(row["Round Code"], row["Course Code"])
-                for _, row in rounds.iterrows()
+                self._load_scorecard_single(row["Round Code"], row["Course Code"])
+                for _, row in self.rounds.iterrows()
             ],
             ignore_index=True,
-        )
-        self._scorecards = self._scorecards.set_index(["Round Code", "Hole"])
+        ).set_index(["Round Code", "Hole"])
 
-    def _get_scorecard(self, round_code: str, course_code: str) -> pd.DataFrame:
+    def _load_scorecard_single(self, round_code: str, course_code: str) -> pd.DataFrame:
         """
         Load a round's scorecard data from the Excel file.
         """
-        scorecard = pd.read_excel(
+        scorecard: pd.DataFrame = pd.read_excel(
             self.file_path,
             round_code,
-            names=[
-                "Hole",
-                "Score",
-                "TFH",  # Tee Fairway Hit
-                "NTFH",  # Non-Tee Fairway Hit
-                "Chips",
-                "Putts",
-            ],
-            dtype={
-                "Hole": pd.Int64Dtype(),
-                "Score": pd.Int64Dtype(),
-                "TFH": pd.StringDtype(),
-                "NTFH": pd.Int64Dtype(),
-                "Chips": pd.Int64Dtype(),
-                "Putts": pd.Int64Dtype(),
-            },
+            names=_SCORECARD_COLUMNS.keys(),
+            dtype=_SCORECARD_COLUMNS,
         )
         scorecard["Round Code"] = round_code
         scorecard["Course Code"] = course_code
@@ -116,23 +127,17 @@ class _ScorecardData:
 
         return scorecard
 
-    def get(self) -> pd.DataFrame:
-        """
-        Returns the scorecard data as a DataFrame.
-        """
-        return self._scorecards
 
-
-class TrackerData:
+class GolfTracker:
     """
-    Interface class to load and manage tracking data from the Excel files.
+    Interface class to load and manage golf tracking data from the Excel files.
     """
 
     def __init__(
         self, courses_path: str, scorecards_path: str, derived_data: bool = True
     ):
         """
-        Initializes the TrackerData class.
+        Initializes the GolfTracker class.
 
         Parameters
         ----------
@@ -146,31 +151,30 @@ class TrackerData:
         self.course_path = courses_path
         self.scorecards_path = scorecards_path
 
-        self._course_data = _CourseData(self.course_path)
-        self._scorecard_data = _ScorecardData(self.scorecards_path)
+        self.courses = _Courses(self.course_path)
+        self.rounds = _Rounds(self.scorecards_path)
 
-        # Merge the course and scorecard data into a single DataFrame
-        self._tracking_data = pd.merge(
-            self._scorecard_data.get().reset_index(),
-            self._course_data.get().reset_index(),
-            on=["Course Code", "Hole"],
-            how="left",
-        ).set_index(["Round Code", "Hole"])
+        self._create_tracking_data()
 
         if derived_data:
             self._derived_data()
 
-    def get(self) -> pd.DataFrame:
+    def _create_tracking_data(self):
         """
-        Returns the tracking data as a DataFrame.
+        Create the tracking DataFrame by merging course and scorecard data.
         """
-        return self._tracking_data
+        self.tracking_data = pd.merge(
+            self.rounds.scorecards.reset_index(),
+            self.courses.descs.reset_index(),
+            on=["Course Code", "Hole"],
+            how="left",
+        ).set_index(["Round Code", "Hole"])
 
     def _derived_data(self) -> pd.DataFrame:
         """
         Calculate derived data for the tracking DataFrame.
         """
-        self._tracking_data["Outcome"] = stats.outcome(self._tracking_data)
-        self._tracking_data["GIR"] = stats.gir(self._tracking_data)
-        self._tracking_data["STG"] = stats.shots_to_green(self._tracking_data)
-        self._tracking_data["NTFA"] = stats.non_tee_fairway_attempts(self._tracking_data)
+        self.tracking_data["Outcome"] = stats.outcome(self.tracking_data)
+        self.tracking_data["GIR"] = stats.gir(self.tracking_data)
+        self.tracking_data["STG"] = stats.shots_to_green(self.tracking_data)
+        self.tracking_data["NTFA"] = stats.non_tee_fairway_attempts(self.tracking_data)
