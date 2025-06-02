@@ -42,3 +42,10 @@ def gir(tracking_data: pd.DataFrame) -> pd.Series:
     Calculate the Greens in Regulation (GIR) for each hole.
     """
     return tracking_data["Score"] - tracking_data["Putts"] <= tracking_data["Par"] - 2
+
+
+def shots_to_green(tracking_data: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the number of shots to reach the green for each hole.
+    """
+    return tracking_data["Score"] - tracking_data["Putts"]
