@@ -173,4 +173,4 @@ class TrackerData:
         self._tracking_data["Outcome"] = golf_stats.outcome(self._tracking_data)
         self._tracking_data["GIR"] = golf_stats.gir(self._tracking_data)
         self._tracking_data["STG"] = golf_stats.shots_to_green(self._tracking_data)
-        self._tracking_data["NTFA"] = golf_stats.fairway_attempts(self._tracking_data)
+        self._tracking_data["NTFA"] = golf_stats.non_tee_fairway_attempts(self._tracking_data)

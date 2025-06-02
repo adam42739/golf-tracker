@@ -51,7 +51,7 @@ def shots_to_green(tracking_data: pd.DataFrame) -> pd.Series:
     return tracking_data["Score"] - tracking_data["Putts"]
 
 
-def fairway_attempts(tracking_data: pd.DataFrame) -> pd.Series:
+def non_tee_fairway_attempts(tracking_data: pd.DataFrame) -> pd.Series:
     """
     Calculate the non-tee fairway attempts for each hole.
     """
