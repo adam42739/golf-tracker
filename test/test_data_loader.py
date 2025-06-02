@@ -1,10 +1,10 @@
-import golftrack
+import pygolf
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
 
 def test_TrackerData():
-    data = golftrack.TrackerData(
+    data = pygolf.TrackerData(
         "test/test_data/courses.xlsx",
         "test/test_data/scorecards.xlsx",
         derived_data=False,
@@ -16,7 +16,7 @@ def test_TrackerData():
 
 
 def test_TrackerData_derived():
-    data = golftrack.TrackerData(
+    data = pygolf.TrackerData(
         "test/test_data/courses.xlsx",
         "test/test_data/scorecards.xlsx",
         derived_data=True,

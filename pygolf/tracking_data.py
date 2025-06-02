@@ -1,5 +1,5 @@
 import pandas as pd
-from golftrack import golf_stats
+from pygolf import golf_stats
 
 
 class _CourseData:
