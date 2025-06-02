@@ -35,3 +35,10 @@ def hole_term(tracking_data: pd.DataFrame) -> pd.Series:
     )
 
     return terms
+
+
+def gir(tracking_data: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the Greens in Regulation (GIR) for each hole.
+    """
+    return tracking_data["Score"] - tracking_data["Putts"] <= tracking_data["Par"] - 2

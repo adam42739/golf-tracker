@@ -120,4 +120,8 @@ class TrackerData:
         return self._tracking_data
 
     def _derived_data(self) -> pd.DataFrame:
+        """
+        Calculate derived data for the tracking DataFrame.
+        """
         self._tracking_data["Hole Term"] = golf_stats.hole_term(self._tracking_data)
+        self._tracking_data["GIR"] = golf_stats.gir(self._tracking_data)
