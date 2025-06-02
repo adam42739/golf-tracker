@@ -1,4 +1,5 @@
 import pandas as pd
+from golftrack import golf_stats
 
 
 class _CourseData:
@@ -88,11 +89,19 @@ class _ScorecardData:
         scorecard = pd.read_excel(
             self.file_path,
             round_code,
+            names=[
+                "Hole",
+                "Score",
+                "TFH",  # Tee Fairway Hit
+                "NTFH",  # Non-Tee Fairway Hit
+                "Chips",
+                "Putts",
+            ],
             dtype={
                 "Hole": pd.Int64Dtype(),
                 "Score": pd.Int64Dtype(),
-                "Tee Fairway": pd.StringDtype(),
-                "Fairway Hits": pd.Int64Dtype(),
+                "TFH": pd.StringDtype(),
+                "NTFH": pd.Int64Dtype(),
                 "Chips": pd.Int64Dtype(),
                 "Putts": pd.Int64Dtype(),
             },
@@ -101,9 +110,9 @@ class _ScorecardData:
         scorecard["Course Code"] = course_code
 
         # Clean the Tee Fairway column
-        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].map(
-            {"Yes": True, "No": False}
-        ).astype(pd.BooleanDtype())
+        scorecard["TFH"] = (
+            scorecard["TFH"].map({"Yes": True, "No": False}).astype(pd.BooleanDtype())
+        )
 
         return scorecard
 
@@ -119,7 +128,21 @@ class TrackerData:
     Interface class to load and manage tracking data from the Excel files.
     """
 
-    def __init__(self, courses_path: str, scorecards_path: str):
+    def __init__(
+        self, courses_path: str, scorecards_path: str, derived_data: bool = True
+    ):
+        """
+        Initializes the TrackerData class.
+
+        Parameters
+        ----------
+            courses_path : str
+                Path to the Excel file containing course data.
+            scorecards_path : str
+                Path to the Excel file containing scorecard data.
+            derived_data : bool, optional
+                If True, derived data will be calculated and added to the DataFrame.
+        """
         self.course_path = courses_path
         self.scorecards_path = scorecards_path
 
@@ -134,8 +157,20 @@ class TrackerData:
             how="left",
         ).set_index(["Round Code", "Hole"])
 
+        if derived_data:
+            self._derived_data()
+
     def get(self) -> pd.DataFrame:
         """
         Returns the tracking data as a DataFrame.
         """
         return self._tracking_data
+
+    def _derived_data(self) -> pd.DataFrame:
+        """
+        Calculate derived data for the tracking DataFrame.
+        """
+        self._tracking_data["Outcome"] = golf_stats.outcome(self._tracking_data)
+        self._tracking_data["GIR"] = golf_stats.gir(self._tracking_data)
+        self._tracking_data["STG"] = golf_stats.shots_to_green(self._tracking_data)
+        self._tracking_data["NTFA"] = golf_stats.non_tee_fairway_attempts(self._tracking_data)
