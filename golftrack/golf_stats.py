@@ -49,3 +49,19 @@ def shots_to_green(tracking_data: pd.DataFrame) -> pd.Series:
     Calculate the number of shots to reach the green for each hole.
     """
     return tracking_data["Score"] - tracking_data["Putts"]
+
+
+def fairways(tracking_data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate the fairway hits and attempts for each hole.
+    """
+    fairway_hits = tracking_data["Tee Fairway"] + tracking_data["Fairway Hits"]
+    fairway_attempts = (
+        tracking_data["Score"] - tracking_data["Putts"] - tracking_data["Chips"]
+    )
+
+    fairways_df = pd.DataFrame(
+        {"Fairway Hits": fairway_hits, "Fairway Attempts": fairway_attempts}
+    )
+
+    return fairways_df
