@@ -1,48 +1,113 @@
 import pandas as pd
 
 
-class TrackerData:
+class _CourseData:
+    """
+    Class to load and manage course data from an Excel file.
+    """
+
     def __init__(self, file_path: str):
         self.file_path = file_path
 
-        self._read_courses()
-        self._read_rounds()
-        self._read_scorecards()
+        # Get the course codes and names
+        courses = pd.read_excel(self.file_path, "Courses")
 
-    def _read_courses(self):
-        self.courses = pd.read_excel(self.file_path, "Courses")
-        self.courses = self.courses.set_index("Course Code")
-
-    def _read_rounds(self):
-        self.rounds = pd.read_excel(self.file_path, "Rounds")
-        self.rounds = pd.merge(
-            self.rounds,
-            self.courses[["Course Name"]],
-            "left",
-            "Course Code",
+        # Concatenate all course information into a single DataFrame
+        self._courses = pd.concat(
+            [self._get_course(row["Course Code"]) for _, row in courses.iterrows()],
+            ignore_index=True,
         )
-        self.rounds = self.rounds.set_index("Sheet Name")
+        self._courses = self._courses.set_index(["Course Code", "Hole"])
 
-    def _read_scorecards(self):
-        scorecards = [
-            self._read_scorecard(row["Course Code"], sheet_name)
-            for sheet_name, row in self.rounds.iterrows()
-        ]
-        self.rounds["Scorecard"] = scorecards
+    def _get_course(self, course_code: str) -> pd.DataFrame:
+        """
+        Load a course's data from the Excel file.
+        """
+        course = pd.read_excel(self.file_path, course_code)
+        course["Course Code"] = course_code
 
-    def _read_scorecard(self, course_code: str, sheet_name: str) -> pd.DataFrame:
-        # Get the course yardage information
-        yardage = self.courses.loc[course_code]
-        yardage = yardage.drop("Course Name")
-        yardage.name = "Yardage"
-        yardage.index.name = "Hole"
-        yardage.index = yardage.index.str[5:].astype(int)
+        # Enforce types
+        course["Hole"] = course["Hole"].astype(int)
+        course["Yardage"] = course["Yardage"].astype(int)
+        course["Par"] = course["Par"].astype(int)
+        course["Handicap"] = course["Handicap"].astype(int)
 
-        # Read the scorecard and merge the yardage information
-        scorecard = pd.read_excel(self.file_path, sheet_name)
-        scorecard = scorecard.set_index("Hole")
-        scorecard = pd.merge(
-            scorecard, yardage, left_index=True, right_index=True, how="left"
+        return course
+
+    def get(self) -> pd.DataFrame:
+        """
+        Returns the course data as a DataFrame.
+        """
+        return self._courses
+
+
+class _ScorecardData:
+    """
+    Class to load and manage round scorecard data from an Excel file.
+    """
+
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+
+        # Get the round information
+        rounds = pd.read_excel(self.file_path, "Rounds")
+
+        # Concatenate all scorecards into a single DataFrame
+        self._scorecards = pd.concat(
+            [
+                self._get_scorecard(row["Round Code"], row["Course Code"])
+                for _, row in rounds.iterrows()
+            ],
+            ignore_index=True,
         )
+        self._scorecards = self._scorecards.set_index(["Round Code", "Hole"])
+
+    def _get_scorecard(self, round_code: str, course_code: str) -> pd.DataFrame:
+        """
+        Load a round's scorecard data from the Excel file.
+        """
+        scorecard = pd.read_excel(self.file_path, round_code)
+        scorecard["Round Code"] = round_code
+        scorecard["Course Code"] = course_code
+
+        # Enforce types
+        scorecard["Hole"] = scorecard["Hole"].astype(int)
+        scorecard["Score"] = scorecard["Score"].astype(int)
+        scorecard["Fairway Hits"] = scorecard["Fairway Hits"].astype(float)
+        scorecard["Chips"] = scorecard["Chips"].astype(float)
+        scorecard["Putts"] = scorecard["Putts"].astype(float)
 
         return scorecard
+
+    def get(self) -> pd.DataFrame:
+        """
+        Returns the scorecard data as a DataFrame.
+        """
+        return self._scorecards
+
+
+class TrackerData:
+    """
+    Interface class to load and manage tracking data from the Excel files.
+    """
+
+    def __init__(self, courses_path: str, scorecards_path: str):
+        self.course_path = courses_path
+        self.scorecards_path = scorecards_path
+
+        self._course_data = _CourseData(self.course_path)
+        self._scorecard_data = _ScorecardData(self.scorecards_path)
+
+        # Merge the course and scorecard data into a single DataFrame
+        self._tracking_data = pd.merge(
+            self._scorecard_data.get().reset_index(),
+            self._course_data.get().reset_index(),
+            on=["Course Code", "Hole"],
+            how="left",
+        ).set_index(["Round Code", "Hole"])
+
+    def get(self) -> pd.DataFrame:
+        """
+        Returns the tracking data as a DataFrame.
+        """
+        return self._tracking_data
