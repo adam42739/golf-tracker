@@ -154,16 +154,16 @@ class GolfTracker:
         self.courses = _Courses(self.course_path)
         self.rounds = _Rounds(self.scorecards_path)
 
-        self._create_tracking_data()
+        self._create_holes_df()
 
         if derived_data:
             self._derived_data()
 
-    def _create_tracking_data(self):
+    def _create_holes_df(self):
         """
         Create the tracking DataFrame by merging course and scorecard data.
         """
-        self.tracking_data = pd.merge(
+        self.holes_df = pd.merge(
             self.rounds.scorecards.reset_index(),
             self.courses.descs.reset_index(),
             on=["Course Code", "Hole"],
@@ -174,7 +174,7 @@ class GolfTracker:
         """
         Calculate derived data for the tracking DataFrame.
         """
-        self.tracking_data["Outcome"] = stats.outcome(self.tracking_data)
-        self.tracking_data["GIR"] = stats.gir(self.tracking_data)
-        self.tracking_data["STG"] = stats.shots_to_green(self.tracking_data)
-        self.tracking_data["NTFA"] = stats.non_tee_fairway_attempts(self.tracking_data)
+        self.holes_df["Outcome"] = stats.outcome(self.holes_df)
+        self.holes_df["GIR"] = stats.gir(self.holes_df)
+        self.holes_df["STG"] = stats.shots_to_green(self.holes_df)
+        self.holes_df["NTFA"] = stats.non_tee_fairway_attempts(self.holes_df)
