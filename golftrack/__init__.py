@@ -1,1 +1,1 @@
-from golftrack.data_loader import TrackerData
+from golftrack.tracking_data import TrackerData
