@@ -102,9 +102,11 @@ class _ScorecardData:
         scorecard["Course Code"] = course_code
 
         # Clean the Tee Fairway column
-        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].map(
-            {"Yes": True, "No": False}
-        ).astype(pd.BooleanDtype())
+        scorecard["Tee Fairway"] = (
+            scorecard["Tee Fairway"]
+            .map({"Yes": True, "No": False})
+            .astype(pd.BooleanDtype())
+        )
 
         return scorecard
 
@@ -120,7 +122,21 @@ class TrackerData:
     Interface class to load and manage tracking data from the Excel files.
     """
 
-    def __init__(self, courses_path: str, scorecards_path: str):
+    def __init__(
+        self, courses_path: str, scorecards_path: str, derived_data: bool = True
+    ):
+        """
+        Initializes the TrackerData class.
+
+        Parameters
+        ----------
+            courses_path : str
+                Path to the Excel file containing course data.
+            scorecards_path : str
+                Path to the Excel file containing scorecard data.
+            derived_data : bool, optional
+                If True, derived data will be calculated and added to the DataFrame.
+        """
         self.course_path = courses_path
         self.scorecards_path = scorecards_path
 
@@ -135,7 +151,8 @@ class TrackerData:
             how="left",
         ).set_index(["Round Code", "Hole"])
 
-        self._derived_data()
+        if derived_data:
+            self._derived_data()
 
     def get(self) -> pd.DataFrame:
         """
