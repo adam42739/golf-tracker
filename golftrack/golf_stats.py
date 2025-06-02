@@ -1,0 +1,37 @@
+import pandas as pd
+import numpy as np
+
+
+def hole_term(tracking_data: pd.DataFrame) -> pd.Series:
+    """
+    Calculate the term for each hole based on the score and par.
+    """
+    # Term masks
+    ace = tracking_data["Score"] == 1
+    condor = tracking_data["Score"] == tracking_data["Par"] - 3
+    eagle = tracking_data["Score"] == tracking_data["Par"] - 2
+    birdie = tracking_data["Score"] == tracking_data["Par"] - 1
+    par = tracking_data["Score"] == tracking_data["Par"]
+    bogey = tracking_data["Score"] == tracking_data["Par"] + 1
+    double_bogey = tracking_data["Score"] == tracking_data["Par"] + 2
+    triple_bogey = tracking_data["Score"] == tracking_data["Par"] + 3
+    blowup = tracking_data["Score"] >= tracking_data["Par"] + 4
+
+    # Create the terms series
+    terms = np.select(
+        [ace, condor, eagle, birdie, par, bogey, double_bogey, triple_bogey, blowup],
+        [
+            "Ace",
+            "Condor",
+            "Eagle",
+            "Birdie",
+            "Par",
+            "Bogey",
+            "Double Bogey",
+            "Triple Bogey",
+            "+4 or worse",
+        ],
+        default="Unknown",
+    )
+
+    return terms

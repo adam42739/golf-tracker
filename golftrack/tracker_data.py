@@ -1,4 +1,5 @@
 import pandas as pd
+from golftrack import golf_stats
 
 
 class _CourseData:
@@ -110,8 +111,13 @@ class TrackerData:
             how="left",
         ).set_index(["Round Code", "Hole"])
 
+        self._derived_data()
+
     def get(self) -> pd.DataFrame:
         """
         Returns the tracking data as a DataFrame.
         """
         return self._tracking_data
+
+    def _derived_data(self) -> pd.DataFrame:
+        self._tracking_data["Hole Term"] = golf_stats.hole_term(self._tracking_data)
