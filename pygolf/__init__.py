@@ -1,1 +1,1 @@
-from pygolf.tracking_data import TrackerData
+from pygolf.data import TrackerData
