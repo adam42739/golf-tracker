@@ -12,7 +12,4 @@ def test_TrackerData():
         "test/test_data/expected_tracking_data.parquet"
     )
 
-    print(data.get().dtypes)
-    print(expected_df.dtypes)
-
     assert_frame_equal(data.get(), expected_df)
