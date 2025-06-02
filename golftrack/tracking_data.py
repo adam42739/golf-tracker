@@ -10,7 +10,14 @@ class _CourseData:
         self.file_path = file_path
 
         # Get the course codes and names
-        courses = pd.read_excel(self.file_path, "Courses")
+        courses = pd.read_excel(
+            self.file_path,
+            "Courses",
+            dtype={
+                "Course Code": pd.StringDtype(),
+                "Course Name": pd.StringDtype(),
+            },
+        )
 
         # Concatenate all course information into a single DataFrame
         self._courses = pd.concat(
@@ -23,14 +30,17 @@ class _CourseData:
         """
         Load a course's data from the Excel file.
         """
-        course = pd.read_excel(self.file_path, course_code)
+        course = pd.read_excel(
+            self.file_path,
+            course_code,
+            dtype={
+                "Hole": pd.Int64Dtype(),
+                "Yardage": pd.Int64Dtype(),
+                "Par": pd.Int64Dtype(),
+                "Handicap": pd.Int64Dtype(),
+            },
+        )
         course["Course Code"] = course_code
-
-        # Enforce types
-        course["Hole"] = course["Hole"].astype(int)
-        course["Yardage"] = course["Yardage"].astype(int)
-        course["Par"] = course["Par"].astype(int)
-        course["Handicap"] = course["Handicap"].astype(int)
 
         return course
 
@@ -50,7 +60,16 @@ class _ScorecardData:
         self.file_path = file_path
 
         # Get the round information
-        rounds = pd.read_excel(self.file_path, "Rounds")
+        rounds = pd.read_excel(
+            self.file_path,
+            "Rounds",
+            dtype={
+                "Round Code": pd.StringDtype(),
+                "Course Code": pd.StringDtype(),
+                "Date": pd.StringDtype(),
+            },
+            parse_dates=["Date"],
+        )
 
         # Concatenate all scorecards into a single DataFrame
         self._scorecards = pd.concat(
@@ -66,20 +85,25 @@ class _ScorecardData:
         """
         Load a round's scorecard data from the Excel file.
         """
-        scorecard = pd.read_excel(self.file_path, round_code)
+        scorecard = pd.read_excel(
+            self.file_path,
+            round_code,
+            dtype={
+                "Hole": pd.Int64Dtype(),
+                "Score": pd.Int64Dtype(),
+                "Tee Fairway": pd.StringDtype(),
+                "Fairway Hits": pd.Int64Dtype(),
+                "Chips": pd.Int64Dtype(),
+                "Putts": pd.Int64Dtype(),
+            },
+        )
         scorecard["Round Code"] = round_code
         scorecard["Course Code"] = course_code
 
-        # Clean the tee fairway column
-        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].map({"Yes": 1.0, "No": 0.0})
-
-        # Enforce types
-        scorecard["Hole"] = scorecard["Hole"].astype(int)
-        scorecard["Score"] = scorecard["Score"].astype(int)
-        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].astype(float)
-        scorecard["Fairway Hits"] = scorecard["Fairway Hits"].astype(float)
-        scorecard["Chips"] = scorecard["Chips"].astype(float)
-        scorecard["Putts"] = scorecard["Putts"].astype(float)
+        # Clean the Tee Fairway column
+        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].map(
+            {"Yes": True, "No": False}
+        ).astype(pd.BooleanDtype())
 
         return scorecard
 
