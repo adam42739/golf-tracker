@@ -1,5 +1,5 @@
 import pandas as pd
-from pygolf import stats
+from pygolf import hole_stats
 
 
 # The columns for the "Courses" sheet in the Excel file
@@ -174,7 +174,7 @@ class GolfTracker:
         """
         Calculate derived data for the tracking DataFrame.
         """
-        self.holes_df["Outcome"] = stats.outcome(self.holes_df)
-        self.holes_df["GIR"] = stats.gir(self.holes_df)
-        self.holes_df["STG"] = stats.shots_to_green(self.holes_df)
-        self.holes_df["NTFA"] = stats.non_tee_fairway_attempts(self.holes_df)
+        self.holes_df["Outcome"] = hole_stats.outcome(self.holes_df)
+        self.holes_df["GIR"] = hole_stats.gir(self.holes_df)
+        self.holes_df["STG"] = hole_stats.shots_to_green(self.holes_df)
+        self.holes_df["NTFA"] = hole_stats.non_tee_fairway_attempts(self.holes_df)
