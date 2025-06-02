@@ -89,11 +89,19 @@ class _ScorecardData:
         scorecard = pd.read_excel(
             self.file_path,
             round_code,
+            names=[
+                "Hole",
+                "Score",
+                "TFH",  # Tee Fairway Hit
+                "NTFH",  # Non-Tee Fairway Hit
+                "Chips",
+                "Putts",
+            ],
             dtype={
                 "Hole": pd.Int64Dtype(),
                 "Score": pd.Int64Dtype(),
-                "Tee Fairway": pd.StringDtype(),
-                "Non-Tee Fairway Hits": pd.Int64Dtype(),
+                "TFH": pd.StringDtype(),
+                "NTFH": pd.Int64Dtype(),
                 "Chips": pd.Int64Dtype(),
                 "Putts": pd.Int64Dtype(),
             },
@@ -102,10 +110,8 @@ class _ScorecardData:
         scorecard["Course Code"] = course_code
 
         # Clean the Tee Fairway column
-        scorecard["Tee Fairway"] = (
-            scorecard["Tee Fairway"]
-            .map({"Yes": True, "No": False})
-            .astype(pd.BooleanDtype())
+        scorecard["TFH"] = (
+            scorecard["TFH"].map({"Yes": True, "No": False}).astype(pd.BooleanDtype())
         )
 
         return scorecard
@@ -164,9 +170,7 @@ class TrackerData:
         """
         Calculate derived data for the tracking DataFrame.
         """
-        self._tracking_data["Hole Term"] = golf_stats.hole_term(self._tracking_data)
+        self._tracking_data["Outcome"] = golf_stats.outcome(self._tracking_data)
         self._tracking_data["GIR"] = golf_stats.gir(self._tracking_data)
         self._tracking_data["STG"] = golf_stats.shots_to_green(self._tracking_data)
-        self._tracking_data["Non-Tee Fairway Attempts"] = golf_stats.fairway_attempts(
-            self._tracking_data
-        )
+        self._tracking_data["NTFA"] = golf_stats.fairway_attempts(self._tracking_data)

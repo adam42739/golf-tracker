@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 
 
-def hole_term(tracking_data: pd.DataFrame) -> pd.Series:
+def outcome(tracking_data: pd.DataFrame) -> pd.Series:
     """
     Calculate the term for each hole based on the score and par.
     """
@@ -53,6 +53,6 @@ def shots_to_green(tracking_data: pd.DataFrame) -> pd.Series:
 
 def fairway_attempts(tracking_data: pd.DataFrame) -> pd.Series:
     """
-    Calculate the non-tee fairway attempts for each hole.F
+    Calculate the non-tee fairway attempts for each hole.
     """
     return tracking_data["Score"] - tracking_data["Putts"] - tracking_data["Chips"] - 1
