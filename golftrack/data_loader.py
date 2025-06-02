@@ -70,9 +70,13 @@ class _ScorecardData:
         scorecard["Round Code"] = round_code
         scorecard["Course Code"] = course_code
 
+        # Clean the tee fairway column
+        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].map({"Yes": 1.0, "No": 0.0})
+
         # Enforce types
         scorecard["Hole"] = scorecard["Hole"].astype(int)
         scorecard["Score"] = scorecard["Score"].astype(int)
+        scorecard["Tee Fairway"] = scorecard["Tee Fairway"].astype(float)
         scorecard["Fairway Hits"] = scorecard["Fairway Hits"].astype(float)
         scorecard["Chips"] = scorecard["Chips"].astype(float)
         scorecard["Putts"] = scorecard["Putts"].astype(float)
