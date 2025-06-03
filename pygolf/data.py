@@ -1,180 +1,223 @@
 import pandas as pd
-from pygolf import hole_stats
+import numpy as np
 
 
-# The columns for the "Courses" sheet in the Excel file
-_COURSES_COLUMNS = {
-    "Course Code": pd.StringDtype(),
-    "Course Name": pd.StringDtype(),
-}
-
-
-# The columns for each course description sheet in the Excel file
-_COURSE_DESC_COLUMNS = {
-    "Hole": pd.Int64Dtype(),
-    "Yardage": pd.Int64Dtype(),
-    "Par": pd.Int64Dtype(),
-    "Handicap": pd.Int64Dtype(),
-}
-
-
-class _Courses:
+class Courses:
     """
     Class to load and manage course data from an Excel file.
     """
+
+    # The columns for the "Courses" sheet in the Excel file
+    _COURSES_COLUMNS = {
+        "Course Code": pd.StringDtype(),
+        "Course Name": pd.StringDtype(),
+    }
+
+    # The columns for each holes sheet in the Excel file
+    _HOLES_COLUMNS = {
+        "Hole": pd.Int64Dtype(),
+        "Yardage": pd.Int64Dtype(),
+        "Par": pd.Int64Dtype(),
+        "Handicap": pd.Int64Dtype(),
+    }
 
     def __init__(self, file_path: str):
         self.file_path = file_path
 
         self._load_courses()
-        self._load_desc_all()
+        self._load_holes()
 
     def _load_courses(self):
         """
         Load the "Courses" sheet from the Excel file.
         """
-        self.courses = pd.read_excel(self.file_path, "Courses", dtype=_COURSES_COLUMNS)
+        self.courses = pd.read_excel(
+            self.file_path, "Courses", dtype=Courses._COURSES_COLUMNS
+        ).set_index("Course Code")
 
-    def _load_desc_all(self):
+    def _load_holes(self):
         """
-        Load all the course description sheets from the Excel file.
+        Load all the course holes sheets from the Excel file.
         """
-        self.descs = pd.concat(
+        self.holes = pd.concat(
             [
-                self._load_desc_single(course_code)
-                for course_code in self.courses["Course Code"]
+                self._load_holes_sheet(course_code)
+                for course_code in self.courses.index
             ],
             ignore_index=True,
         ).set_index(["Course Code", "Hole"])
 
-    def _load_desc_single(self, course_code: str) -> pd.DataFrame:
+    def _load_holes_sheet(self, course_code: str) -> pd.DataFrame:
         """
-        Load a course's description data from the Excel file.
+        Load a single course's holes data from the Excel file.
         """
-        course = pd.read_excel(self.file_path, course_code, dtype=_COURSE_DESC_COLUMNS)
-        course["Course Code"] = course_code
+        holes_sheet = pd.read_excel(
+            self.file_path, course_code, dtype=Courses._HOLES_COLUMNS
+        )
 
-        return course
+        # We need to associate holes with their course code since we
+        # concatenate all holes from different courses into a single DataFrame.
+        holes_sheet["Course Code"] = course_code
 
-
-# The columns for the "Rounds" sheet in the Excel file
-_ROUNDS_COLUMNS = {
-    "Round Code": pd.StringDtype(),
-    "Course Code": pd.StringDtype(),
-    "Date": pd.StringDtype(),
-}
+        return holes_sheet
 
 
-# The columns for each round scorecard sheet in the Excel file
-_SCORECARD_COLUMNS = {
-    "Hole": pd.Int64Dtype(),
-    "Score": pd.Int64Dtype(),
-    "TFH": pd.StringDtype(),  # Tee Fairway Hit (Yes/No in the Excel file but converted to BooleanDtype later)
-    "NTFH": pd.Int64Dtype(),  # Non-Tee Fairway Hits
-    "Chips": pd.Int64Dtype(),
-    "Putts": pd.Int64Dtype(),
-}
-
-
-class _Rounds:
+class Rounds:
     """
     Class to load and manage round scorecard data from an Excel file.
     """
 
-    def __init__(self, file_path: str):
-        self.file_path = file_path
+    # The columns for the "Rounds" sheet in the Excel file
+    _ROUNDS_COLUMNS = {
+        "Round Code": pd.StringDtype(),
+        "Course Code": pd.StringDtype(),
+        "Date": pd.StringDtype(),
+    }
+
+    # The columns for each round scorecard sheet in the Excel file
+    _SCORECARD_COLUMNS = {
+        "Hole": pd.Int64Dtype(),
+        "Score": pd.Int64Dtype(),
+        "TFH": pd.StringDtype(),  # Tee Fairway Hit (Yes/No in the Excel file but converted to BooleanDtype later)
+        "NTFH": pd.Int64Dtype(),  # Non-Tee Fairway Hits
+        "Chips": pd.Int64Dtype(),
+        "Putts": pd.Int64Dtype(),
+    }
+
+    def __init__(self, rounds_path: str, courses_path: str, derived_data: bool = False):
+        self.rounds_path = rounds_path
+        self.courses_path = courses_path
+
+        self.courses = Courses(self.courses_path)
 
         self._load_rounds()
-        self._load_scorecard_all()
+        self._load_scorecards()
+
+        if derived_data:
+            self._outcome()
+            self._gir()
+            self._shots_to_green()
+            self._non_tee_fairway_attempts()
 
     def _load_rounds(self):
         """
         Load the "Rounds" sheet from the Excel file.
         """
         self.rounds = pd.read_excel(
-            self.file_path, "Rounds", dtype=_ROUNDS_COLUMNS, parse_dates=["Date"]
+            self.rounds_path,
+            "Rounds",
+            dtype=Rounds._ROUNDS_COLUMNS,
+            parse_dates=["Date"],
         )
 
-    def _load_scorecard_all(self):
+    def _load_scorecards(self):
         """
         Load all the scorecard sheets from the Excel file.
         """
         self.scorecards = pd.concat(
             [
-                self._load_scorecard_single(row["Round Code"], row["Course Code"])
+                self._load_scorecard_sheet(row["Round Code"], row["Course Code"])
                 for _, row in self.rounds.iterrows()
             ],
             ignore_index=True,
+        )
+
+        # Merge with course data to get the course name and other details
+        self.scorecards = pd.merge(
+            self.scorecards,
+            self.courses.holes.reset_index(),
+            "left",
+            ["Course Code", "Hole"],
         ).set_index(["Round Code", "Hole"])
 
-    def _load_scorecard_single(self, round_code: str, course_code: str) -> pd.DataFrame:
+    def _load_scorecard_sheet(self, round_code: str, course_code: str) -> pd.DataFrame:
         """
         Load a round's scorecard data from the Excel file.
         """
         scorecard: pd.DataFrame = pd.read_excel(
-            self.file_path,
+            self.rounds_path,
             round_code,
-            names=_SCORECARD_COLUMNS.keys(),
-            dtype=_SCORECARD_COLUMNS,
+            names=Rounds._SCORECARD_COLUMNS.keys(),
+            dtype=Rounds._SCORECARD_COLUMNS,
         )
+
+        # We need to associate the scorecard with its round code and course code
         scorecard["Round Code"] = round_code
         scorecard["Course Code"] = course_code
 
-        # Clean the Tee Fairway column
+        # Clean the Tee Fairway Hit column (convert to boolean)
         scorecard["TFH"] = (
             scorecard["TFH"].map({"Yes": True, "No": False}).astype(pd.BooleanDtype())
         )
 
         return scorecard
 
-
-class GolfTracker:
-    """
-    Interface class to load and manage golf tracking data from the Excel files.
-    """
-
-    def __init__(
-        self, courses_path: str, scorecards_path: str, derived_data: bool = True
-    ):
+    def _outcome(self) -> pd.Series:
         """
-        Initializes the GolfTracker class.
-
-        Parameters
-        ----------
-            courses_path : str
-                Path to the Excel file containing course data.
-            scorecards_path : str
-                Path to the Excel file containing scorecard data.
-            derived_data : bool, optional
-                If True, derived data will be calculated and added to the DataFrame.
+        Calculate the term for each hole based on the score and par.
         """
-        self.course_path = courses_path
-        self.scorecards_path = scorecards_path
+        # Outcome masks
+        ace = self.scorecards["Score"] == 1
+        condor = self.scorecards["Score"] == self.scorecards["Par"] - 3
+        eagle = self.scorecards["Score"] == self.scorecards["Par"] - 2
+        birdie = self.scorecards["Score"] == self.scorecards["Par"] - 1
+        par = self.scorecards["Score"] == self.scorecards["Par"]
+        bogey = self.scorecards["Score"] == self.scorecards["Par"] + 1
+        double_bogey = self.scorecards["Score"] == self.scorecards["Par"] + 2
+        triple_bogey = self.scorecards["Score"] == self.scorecards["Par"] + 3
+        blowup = self.scorecards["Score"] >= self.scorecards["Par"] + 4
 
-        self.courses = _Courses(self.course_path)
-        self.rounds = _Rounds(self.scorecards_path)
+        # Create the outcomes series
+        outcomes = np.select(
+            [
+                ace,
+                condor,
+                eagle,
+                birdie,
+                par,
+                bogey,
+                double_bogey,
+                triple_bogey,
+                blowup,
+            ],
+            [
+                "Ace",
+                "Condor",
+                "Eagle",
+                "Birdie",
+                "Par",
+                "Bogey",
+                "Double Bogey",
+                "Triple Bogey",
+                "+4 or worse",
+            ],
+            default="Unknown",
+        )
 
-        self._create_holes_df()
+        self.scorecards["Outcome"] = outcomes
 
-        if derived_data:
-            self._derived_data()
-
-    def _create_holes_df(self):
+    def _gir(self) -> pd.Series:
         """
-        Create the tracking DataFrame by merging course and scorecard data.
+        Calculate the Greens in Regulation (GIR) for each hole.
         """
-        self.holes_df = pd.merge(
-            self.rounds.scorecards.reset_index(),
-            self.courses.descs.reset_index(),
-            on=["Course Code", "Hole"],
-            how="left",
-        ).set_index(["Round Code", "Hole"])
+        self.scorecards["GIR"] = (
+            self.scorecards["Score"] - self.scorecards["Putts"]
+            <= self.scorecards["Par"] - 2
+        )
 
-    def _derived_data(self) -> pd.DataFrame:
+    def _shots_to_green(self):
         """
-        Calculate derived data for the tracking DataFrame.
+        Calculate the number of shots to reach the green for each hole.
         """
-        self.holes_df["Outcome"] = hole_stats.outcome(self.holes_df)
-        self.holes_df["GIR"] = hole_stats.gir(self.holes_df)
-        self.holes_df["STG"] = hole_stats.shots_to_green(self.holes_df)
-        self.holes_df["NTFA"] = hole_stats.non_tee_fairway_attempts(self.holes_df)
+        self.scorecards["STG"] = self.scorecards["Score"] - self.scorecards["Putts"]
+
+    def _non_tee_fairway_attempts(self):
+        """
+        Calculate the non-tee fairway attempts for each hole.
+        """
+        self.scorecards["NTFA"] = (
+            self.scorecards["Score"]
+            - self.scorecards["Putts"]
+            - self.scorecards["Chips"]
+            - 1
+        )
