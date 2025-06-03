@@ -7,3 +7,6 @@ env
 # Cache files
 **/__pycache__
 .pytest_cache
+
+# Excel temp lock files
+~$*.xlsx
